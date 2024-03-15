@@ -15,6 +15,7 @@
 |             | 发送模版消息             | func (s *SDK) SendTempMessage(accessToken string, message *TempMessage) error                                                        |
 | 授权          | 获取网页授权access_token | func GetWebAuthAccessToken(appID, appSecret, code string) (*GetWebAuthAccessTokenResponse, error)                                    |
 | 客服消息        | 发送客服文本消息           | func (s *sdk)SendTextMessage(accessToken string, toUser, content string) error                                                       |
+| 素材管理        | 下载音频文件             | func (s *SDK) DownloadVoice(accessToken, mediaID, path string) error                                                                 |
 
 ## 快速开始
 

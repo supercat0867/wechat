@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -288,4 +290,32 @@ func (s *SDK) GetUserInfo(accessToken, openID string) (*GetUserInfoResponse, err
 		return nil, ErrorHandler(ErrGetUserInfo, responseJson.ErrMsg, responseJson.Errcode)
 	}
 	return &responseJson, nil
+}
+
+// DownloadVoice 通过获取临时素材接口下载音频
+// 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
+func (s *SDK) DownloadVoice(accessToken, mediaID, path string) error {
+	// 接口地址
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
+		accessToken, mediaID)
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// 确保目录存在
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	out, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
