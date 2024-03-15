@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	// 获取access_token
-	resp, err := wechat.GetAccessToken("", "")
+	sdk := wechat.NewMessageSDK()
+	resp, err := sdk.GetAccessToken("", "")
 	if err != nil {
 		panic(err)
 	}
