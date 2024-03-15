@@ -2,14 +2,14 @@ package wechat
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -294,28 +294,23 @@ func (s *SDK) GetUserInfo(accessToken, openID string) (*GetUserInfoResponse, err
 
 // DownloadVoice 通过获取临时素材接口下载音频
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
-func (s *SDK) DownloadVoice(accessToken, mediaID, path string) error {
+func (s *SDK) DownloadVoice(accessToken, mediaID string) (string, error) {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
 		accessToken, mediaID)
 	resp, err := http.Get(url)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
-	// 确保目录存在
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-
-	out, err := os.Create(path)
+	// 读取响应体中的内容
+	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer out.Close()
 
-	_, err = io.Copy(out, resp.Body)
-	return err
+	// 将读取到的音频文件内容转换为Base64编码的字符串
+	encodedData := base64.StdEncoding.EncodeToString(data)
+	return encodedData, nil
 }
