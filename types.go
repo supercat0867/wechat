@@ -32,6 +32,7 @@ const (
 	ShortVideoMessage MessageType = "shortvideo" // 小视频消息
 	LocationMessage   MessageType = "location"   // 地理位置消息
 	LinkMessage       MessageType = "link"       // 链接消息
+	EventMessage      MessageType = "event"      // 事件消息
 )
 
 type MessageHandler func(msg *Message, w http.ResponseWriter)
@@ -55,6 +56,7 @@ type XMLMessage struct {
 	MediaId      string   `xml:"MediaId,omitempty"`     // 图片消息媒体id或语音消息媒体id，可以调用获取临时素材接口拉取数据。
 	Format       string   `xml:"Format,omitempty"`      // 语音格式，如amr，speex等
 	Recognition  string   `xml:"Recognition,omitempty"` // 语音识别结果，UTF8编码 (已废弃)
+	Event        string   `xml:"Event,omitempty"`       // 事件类型
 }
 
 type Message struct {
@@ -63,6 +65,7 @@ type Message struct {
 	ToUserName   string      // 开发者微信号
 	FromUserName string      // 发送方openid
 	MediaId      string      // 素材ID
+	Event        string      // 事件类型
 }
 
 // AccessTokenResponse access_token响应
