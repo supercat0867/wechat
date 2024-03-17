@@ -2,10 +2,12 @@ package wechat
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -295,9 +297,42 @@ func (s *SDK) GetUserInfo(accessToken, openID string) (*GetUserInfoResponse, err
 	return &responseJson, nil
 }
 
-// DownloadVoice 通过获取临时素材接口下载音频
+// GetWebAuthAccessToken 获取网页授权access_token
+// 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/Wechat_webpage_authorization.html#1
+// 说明：此功能需要的权限较高，需要在微信公众号后台配置相关信息使用，详细使用方法流程请参考官方文档
+func (s *SDK) GetWebAuthAccessToken(appID, appSecret, code string) (*GetWebAuthAccessTokenResponse, error) {
+	// 接口地址
+	url := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code",
+		appID, appSecret, code)
+
+	// 发送GET请求
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// 解析响应到请求体
+	var responseJson GetWebAuthAccessTokenResponse
+	if err = json.Unmarshal(body, &responseJson); err != nil {
+		return nil, err
+	}
+	if responseJson.Errcode != 0 {
+		return nil, ErrorHandler(ErrGetWebAuthAccessToken, responseJson.ErrMsg, responseJson.Errcode)
+	}
+	return &responseJson, nil
+}
+
+// DownloadAmrVoiceByMediaID 通过获取临时素材接口下载amr格式音频到指定路径
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
-func (s *SDK) DownloadVoice(accessToken, mediaID, path string) error {
+func (s *SDK) DownloadAmrVoiceByMediaID(accessToken, mediaID, path string) error {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
 		accessToken, mediaID)
@@ -321,4 +356,25 @@ func (s *SDK) DownloadVoice(accessToken, mediaID, path string) error {
 
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+// DownloadAmrVoiceByMediaIDAndReturnBase64 通过获取临时素材接口下载amr格式音频，并返回Base64编码字符串
+// 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
+func (s *SDK) DownloadAmrVoiceByMediaIDAndReturnBase64(accessToken, mediaID string) (string, error) {
+	// 接口地址
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
+		accessToken, mediaID)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	base64Str := base64.StdEncoding.EncodeToString(data)
+	return base64Str, nil
 }
