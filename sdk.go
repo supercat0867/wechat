@@ -17,10 +17,26 @@ import (
 )
 
 // NewMessageSDK 实例化sdk
-func NewMessageSDK() *SDK {
-	return &SDK{
-		handlers: make(map[MessageType]MessageHandler),
+func NewMessageSDK(appid, appsecret string) *SDK {
+	sdk := &SDK{
+		handlers:  make(map[MessageType]MessageHandler),
+		AppID:     appid,
+		AppSecret: appsecret,
 	}
+
+	// 自动维护accesstoken
+	go func() {
+		for {
+			resp, err := sdk.GetAccessToken()
+			if err != nil {
+				log.Println(err)
+			}
+			sdk.AccessToken = resp.AccessToken
+			time.Sleep(time.Hour)
+		}
+	}()
+
+	return sdk
 }
 
 // RegisterHandler 注册消息处理方法
@@ -89,7 +105,7 @@ func (s *SDK) BuildTextResponse(toUser, fromUser, content string) string {
 
 // SendTextMessage 发送文本消息
 // 官方文档地址：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Service_Center_messages.html#%E5%AE%A2%E6%9C%8D%E6%8E%A5%E5%8F%A3-%E5%8F%91%E6%B6%88%E6%81%AF
-func (s *SDK) SendTextMessage(accessToken string, toUser, content string) error {
+func (s *SDK) SendTextMessage(toUser, content string) error {
 	data := map[string]interface{}{
 		"touser":  toUser,
 		"msgtype": "text",
@@ -103,7 +119,7 @@ func (s *SDK) SendTextMessage(accessToken string, toUser, content string) error 
 	}
 
 	// 创建请求
-	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=%s", accessToken)
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=%s", s.AccessToken)
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
@@ -140,7 +156,7 @@ func (s *SDK) SendTextMessage(accessToken string, toUser, content string) error 
 
 // SendMiniprogramMessage 发送小程序卡片
 // 官方文档地址：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Service_Center_messages.html#%E5%AE%A2%E6%9C%8D%E6%8E%A5%E5%8F%A3-%E5%8F%91%E6%B6%88%E6%81%AF
-func (s *SDK) SendMiniprogramMessage(accessToken, toUser, title, appid, pagePath, mediaId string) error {
+func (s *SDK) SendMiniprogramMessage(toUser, title, appid, pagePath, mediaId string) error {
 	data := map[string]interface{}{
 		"touser":  toUser,
 		"msgtype": "miniprogrampage",
@@ -157,7 +173,7 @@ func (s *SDK) SendMiniprogramMessage(accessToken, toUser, title, appid, pagePath
 	}
 
 	// 创建请求
-	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=%s", accessToken)
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=%s", s.AccessToken)
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
@@ -194,10 +210,10 @@ func (s *SDK) SendMiniprogramMessage(accessToken, toUser, title, appid, pagePath
 
 // GetAccessToken 获取access_token
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Basic_Information/Get_access_token.html
-func (s *SDK) GetAccessToken(appID, appSecret string) (*AccessTokenResponse, error) {
+func (s *SDK) GetAccessToken() (*AccessTokenResponse, error) {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=%s&secret=%s",
-		appID, appSecret)
+		s.AppID, s.AppSecret)
 
 	// 发送GET请求
 	resp, err := http.Get(url)
@@ -244,7 +260,7 @@ func (s *SDK) NewTemMessage(touser, templateID, url, appID, appPagePath, clientM
 
 // SendTempMessage 发送模版消息
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Template_Message_Interface.html
-func (s *SDK) SendTempMessage(accessToken string, message *TempMessage) error {
+func (s *SDK) SendTempMessage(message *TempMessage) error {
 	// 将消息数据序列化为JSON
 	jsonData, err := json.Marshal(message)
 	if err != nil {
@@ -252,7 +268,7 @@ func (s *SDK) SendTempMessage(accessToken string, message *TempMessage) error {
 	}
 
 	// 创建请求
-	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken)
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", s.AccessToken)
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
@@ -290,10 +306,10 @@ func (s *SDK) SendTempMessage(accessToken string, message *TempMessage) error {
 
 // GetUserList 获取用户列表
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/User_Management/Getting_a_User_List.html
-func (s *SDK) GetUserList(accessToken, nextOpenID string) (*GetUserListResponse, error) {
+func (s *SDK) GetUserList(nextOpenID string) (*GetUserListResponse, error) {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/user/get?access_token=%s&next_openid=%s",
-		accessToken, nextOpenID)
+		s.AccessToken, nextOpenID)
 
 	// 发送GET请求
 	resp, err := http.Get(url)
@@ -322,10 +338,10 @@ func (s *SDK) GetUserList(accessToken, nextOpenID string) (*GetUserListResponse,
 
 // GetUserInfo 获取用户基本信息
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/User_Management/Get_users_basic_information_UnionID.html#UinonId
-func (s *SDK) GetUserInfo(accessToken, openID string) (*GetUserInfoResponse, error) {
+func (s *SDK) GetUserInfo(openID string) (*GetUserInfoResponse, error) {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/user/info?access_token=%s&openid=%s&lang=zh_CN",
-		accessToken, openID)
+		s.AccessToken, openID)
 
 	// 发送GET请求
 	resp, err := http.Get(url)
@@ -355,10 +371,10 @@ func (s *SDK) GetUserInfo(accessToken, openID string) (*GetUserInfoResponse, err
 // GetWebAuthAccessToken 获取网页授权access_token
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/Wechat_webpage_authorization.html#1
 // 说明：此功能需要的权限较高，需要在微信公众号后台配置相关信息使用，详细使用方法流程请参考官方文档
-func (s *SDK) GetWebAuthAccessToken(appID, appSecret, code string) (*GetWebAuthAccessTokenResponse, error) {
+func (s *SDK) GetWebAuthAccessToken(code string) (*GetWebAuthAccessTokenResponse, error) {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code",
-		appID, appSecret, code)
+		s.AppID, s.AppSecret, code)
 
 	// 发送GET请求
 	resp, err := http.Get(url)
@@ -387,10 +403,10 @@ func (s *SDK) GetWebAuthAccessToken(appID, appSecret, code string) (*GetWebAuthA
 
 // DownloadAmrVoiceByMediaID 通过获取临时素材接口下载amr格式音频到指定路径
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
-func (s *SDK) DownloadAmrVoiceByMediaID(accessToken, mediaID, path string) error {
+func (s *SDK) DownloadAmrVoiceByMediaID(mediaID, path string) error {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
-		accessToken, mediaID)
+		s.AccessToken, mediaID)
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -415,10 +431,10 @@ func (s *SDK) DownloadAmrVoiceByMediaID(accessToken, mediaID, path string) error
 
 // DownloadAmrVoiceByMediaIDAndReturnBase64 通过获取临时素材接口下载amr格式音频，并返回Base64编码字符串
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
-func (s *SDK) DownloadAmrVoiceByMediaIDAndReturnBase64(accessToken, mediaID string) (string, error) {
+func (s *SDK) DownloadAmrVoiceByMediaIDAndReturnBase64(mediaID string) (string, error) {
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
-		accessToken, mediaID)
+		s.AccessToken, mediaID)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -436,9 +452,10 @@ func (s *SDK) DownloadAmrVoiceByMediaIDAndReturnBase64(accessToken, mediaID stri
 
 // AddMaterial 新增永久素材
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Adding_Permanent_Assets.html
-func (s *SDK) AddMaterial(accessToken, mediaType, fileUrl string) (string, error) {
+func (s *SDK) AddMaterial(mediaType, fileUrl string) (string, error) {
 
-	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=%s&type=%s", accessToken, mediaType)
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=%s&type=%s",
+		s.AccessToken, mediaType)
 
 	resp, err := http.Get(fileUrl)
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 
 // 被动回复消息示例，实际使用中要在公众号后台配置号服务器地址等信息
 func main() {
-	sdk := wechat.NewMessageSDK()
+	sdk := wechat.NewMessageSDK("", "")
 
 	// 注册文本消息处理函数
 	sdk.RegisterHandler(wechat.TextMessage, func(msg *wechat.Message, w http.ResponseWriter) {

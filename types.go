@@ -36,7 +36,10 @@ const (
 type MessageHandler func(msg *Message, w http.ResponseWriter)
 
 type SDK struct {
-	handlers map[MessageType]MessageHandler
+	handlers    map[MessageType]MessageHandler
+	AppID       string // appid
+	AppSecret   string // appsecret
+	AccessToken string // accesstoken
 }
 
 // XMLMessage 微信xml消息格式

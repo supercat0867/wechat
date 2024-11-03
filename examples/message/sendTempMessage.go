@@ -6,11 +6,7 @@ import (
 )
 
 func main() {
-	sdk := wechat.NewMessageSDK()
-	resp, err := sdk.GetAccessToken("", "")
-	if err != nil {
-		panic(err)
-	}
+	sdk := wechat.NewMessageSDK("", "")
 	// 构造消息结构
 	data := map[string]string{
 		"thing2":   "请假流程通知",
@@ -21,7 +17,7 @@ func main() {
 	tempMessage := sdk.NewTemMessage("obIt16lHlQiZpT5MYC_lTfFv7ZSA", "IWMM8w9XD3jqc01gXyisvG6Y6yPMfGhlGyLPWimAN2w",
 		"www.baidu.com", "", "", "", data)
 	// 发送模版消息
-	err = sdk.SendTempMessage(resp.AccessToken, tempMessage)
+	err := sdk.SendTempMessage(tempMessage)
 	if err != nil {
 		panic(err)
 	} else {
