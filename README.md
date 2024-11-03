@@ -1,6 +1,6 @@
-# wechat sdk for golang
+# wechat-officialAccount-sdk-go
 
-本项目是一个为 Go 项目提供微信公众号相关功能的 SDK，是基于微信公众号官方文档开发。
+本项目是一个为Go项目提供微信公众号相关功能的非官方SDK，基于微信公众号官方文档开发。
 
 ## 功能
 
@@ -14,8 +14,10 @@
 | 模版消息        | 实例化模版消息            | func (s *SDK) NewTemMessage(touser, templateID, url, appID, appPagePath, clientMsgID string, msgData map[string]string) *TempMessage |
 |             | 发送模版消息             | func (s *SDK) SendTempMessage(accessToken string, message *TempMessage) error                                                        |
 | 授权          | 获取网页授权access_token | func GetWebAuthAccessToken(appID, appSecret, code string) (*GetWebAuthAccessTokenResponse, error)                                    |
-| 客服消息        | 发送客服文本消息           | func (s *sdk)SendTextMessage(accessToken string, toUser, content string) error                                                       |
+| 客服消息        | 发送文本消息             | func (s *SDK)SendTextMessage(accessToken string, toUser, content string) error                                                       |
+|             | 发送小程序卡片消息          | func (s *SDK) SendMiniprogramMessage(accessToken, toUser, title, appid, pagePath, mediaId string) error                              |
 | 素材管理        | 下载音频文件             | func (s *SDK) DownloadVoice(accessToken, mediaID, path string) error                                                                 |
+|             | 新增永久素材             | func (s *SDK) AddMaterial(accessToken, mediaType, fileUrl string) (string, error)                                                    |
 
 ## 快速开始
 

@@ -15,7 +15,6 @@ func main() {
 	// 注册文本消息处理函数
 	sdk.RegisterHandler(wechat.TextMessage, func(msg *wechat.Message, w http.ResponseWriter) {
 		log.Printf("收到文本消息：%s\n,发送方openid：%s ", msg.Content, msg.FromUserName)
-		// TODO 检查是否可
 		responseXML := sdk.BuildTextResponse(msg.FromUserName, msg.ToUserName, "这是一条文本消息回复")
 		fmt.Fprint(w, responseXML)
 	})

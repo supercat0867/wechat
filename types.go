@@ -139,3 +139,10 @@ type GetWebAuthAccessTokenResponse struct {
 	Errcode        int    `json:"errcode"`         // 错误码
 	ErrMsg         string `json:"errmsg"`          // 错误信息
 }
+
+// AddMediaResponse 新增永久素材响应
+type AddMediaResponse struct {
+	Errcode int    `json:"errcode"`  // 错误码
+	ErrMsg  string `json:"errmsg"`   // 错误信息
+	MediaId string `json:"media_id"` // 媒体文件上传后，获取标识
+}
