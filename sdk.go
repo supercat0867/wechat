@@ -18,7 +18,7 @@ import (
 
 // NewMessageSDK 实例化sdk
 func NewMessageSDK(appid, appsecret string) *SDK {
-	sdk := &SDK{
+	sdk := SDK{
 		handlers:  make(map[MessageType]MessageHandler),
 		AppID:     appid,
 		AppSecret: appsecret,
@@ -36,7 +36,7 @@ func NewMessageSDK(appid, appsecret string) *SDK {
 		}
 	}()
 
-	return sdk
+	return &sdk
 }
 
 // RegisterHandler 注册消息处理方法
