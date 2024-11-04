@@ -12,12 +12,13 @@ func ErrorHandler(action, errmsg string, errcode int) error {
 }
 
 var (
-	ErrGetAccessToken        = "access_token获取失败"
-	ErrSendTempMessage       = "模版消息发送失败"
-	ErrSendTextMessage       = "客服文本消息发送失败"
-	ErrGetUserList           = "用户列表获取失败"
-	ErrGetUserInfo           = "用户基础信息获取失败"
-	ErrGetWebAuthAccessToken = "网页授权access_token获取失败"
+	ErrGetAccessToken         = "access_token获取失败"
+	ErrSendTempMessage        = "模版消息发送失败"
+	ErrSendTextMessage        = "文本消息发送失败"
+	ErrSendMiniprogramMessage = "小程序卡片消息发送失败"
+	ErrGetUserList            = "用户列表获取失败"
+	ErrGetUserInfo            = "用户基础信息获取失败"
+	ErrGetWebAuthAccessToken  = "网页授权access_token获取失败"
 )
 
 type MessageType string

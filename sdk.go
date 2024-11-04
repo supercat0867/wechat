@@ -152,7 +152,7 @@ func (s *SDK) SendTextMessage(toUser, content string) error {
 		return nil
 	}
 
-	return ErrorHandler(ErrSendTextMessage, responseJson.ErrMsg, responseJson.Errcode)
+	return ErrorHandler(ErrSendMiniprogramMessage, responseJson.ErrMsg, responseJson.Errcode)
 }
 
 // SendMiniprogramMessage 发送小程序卡片
