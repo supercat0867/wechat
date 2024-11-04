@@ -1,17 +1,14 @@
-package main
+package examples
 
 import (
 	"crypto/sha1"
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sort"
 	"strings"
 )
-
-// 示例，用于配置服务器
 
 // 微信公众号设置的token
 const token = "YourWeChatToken"
@@ -26,8 +23,8 @@ type WeChatMessage struct {
 	MsgId        int64    `xml:"MsgId"`
 }
 
-// 验证微信服务器
-func validate(w http.ResponseWriter, r *http.Request) bool {
+// 验证签名
+func validate(r *http.Request) bool {
 	signature := r.URL.Query().Get("signature")
 	timestamp := r.URL.Query().Get("timestamp")
 	nonce := r.URL.Query().Get("nonce")
@@ -45,9 +42,9 @@ func validate(w http.ResponseWriter, r *http.Request) bool {
 
 // 处理微信服务器发送的GET请求（服务器验证）
 func handleGet(w http.ResponseWriter, r *http.Request) {
-	if validate(w, r) {
-		echostr := r.URL.Query().Get("echostr")
-		fmt.Fprintf(w, echostr)
+	if validate(r) {
+		echoStr := r.URL.Query().Get("echostr")
+		fmt.Fprintf(w, echoStr)
 	} else {
 		fmt.Fprintf(w, "Failed to validate")
 	}
@@ -55,12 +52,12 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 
 // 处理微信服务器发送的POST请求（接收消息）
 func handlePost(w http.ResponseWriter, r *http.Request) {
-	if !validate(w, r) {
+	if !validate(r) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Can't read body", http.StatusBadRequest)
 		return

@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	sdk := wechat.NewMessageSDK("", "")
+	sdk := wechat.New("", "")
 	// 构造消息结构
 	data := map[string]string{
 		"thing2":   "请假流程通知",

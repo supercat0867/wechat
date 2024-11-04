@@ -16,28 +16,30 @@ import (
 	"time"
 )
 
-// NewMessageSDK 实例化sdk
-func NewMessageSDK(appid, appsecret string) *SDK {
+func New(appid, appsecret string) *SDK {
 	sdk := &SDK{
 		handlers:  make(map[MessageType]MessageHandler),
 		AppID:     appid,
 		AppSecret: appsecret,
 	}
-
-	// 自动维护accesstoken
-	go func() {
-		for {
-			resp, err := sdk.GetAccessToken()
-			if err != nil {
-				log.Println(err)
-			} else {
-				sdk.AccessToken = resp.AccessToken
-			}
-			time.Sleep(time.Hour)
-		}
-	}()
-
 	return sdk
+}
+
+// checkAccessToken 检查 AccessToken 是否存在或过期，如果过期则刷新
+func (s *SDK) checkAccessToken() error {
+	s.tokenMutex.Lock()
+	defer s.tokenMutex.Unlock()
+
+	// 如果 AccessToken 已过期或不存在，则重新获取
+	if time.Now().After(s.tokenExpiry) || s.AccessToken == "" {
+		resp, err := s.GetAccessToken()
+		if err != nil {
+			return err
+		}
+		s.AccessToken = resp.AccessToken
+		s.tokenExpiry = time.Now().Add(time.Hour) // 提前1个小时刷新，防止token快到期
+	}
+	return nil
 }
 
 // RegisterHandler 注册消息处理方法
@@ -107,6 +109,10 @@ func (s *SDK) BuildTextResponse(toUser, fromUser, content string) string {
 // SendTextMessage 发送文本消息
 // 官方文档地址：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Service_Center_messages.html#%E5%AE%A2%E6%9C%8D%E6%8E%A5%E5%8F%A3-%E5%8F%91%E6%B6%88%E6%81%AF
 func (s *SDK) SendTextMessage(toUser, content string) error {
+	if err := s.checkAccessToken(); err != nil {
+		return err
+	}
+
 	data := map[string]interface{}{
 		"touser":  toUser,
 		"msgtype": "text",
@@ -152,12 +158,16 @@ func (s *SDK) SendTextMessage(toUser, content string) error {
 		return nil
 	}
 
-	return ErrorHandler(ErrSendMiniprogramMessage, responseJson.ErrMsg, responseJson.Errcode)
+	return ErrorHandler(ErrSendMiniprogramMessage, responseJson.Errmsg, responseJson.Errcode)
 }
 
 // SendMiniprogramMessage 发送小程序卡片
 // 官方文档地址：https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Service_Center_messages.html#%E5%AE%A2%E6%9C%8D%E6%8E%A5%E5%8F%A3-%E5%8F%91%E6%B6%88%E6%81%AF
 func (s *SDK) SendMiniprogramMessage(toUser, title, appid, pagePath, mediaId string) error {
+	if err := s.checkAccessToken(); err != nil {
+		return err
+	}
+
 	data := map[string]interface{}{
 		"touser":  toUser,
 		"msgtype": "miniprogrampage",
@@ -206,7 +216,7 @@ func (s *SDK) SendMiniprogramMessage(toUser, title, appid, pagePath, mediaId str
 		return nil
 	}
 
-	return ErrorHandler(ErrSendTextMessage, responseJson.ErrMsg, responseJson.Errcode)
+	return ErrorHandler(ErrSendTextMessage, responseJson.Errmsg, responseJson.Errcode)
 }
 
 // GetAccessToken 获取access_token
@@ -240,7 +250,7 @@ func (s *SDK) GetAccessToken() (*AccessTokenResponse, error) {
 		return &responseJson, nil
 	}
 
-	return nil, ErrorHandler(ErrGetAccessToken, responseJson.ErrMsg, responseJson.Errcode)
+	return nil, ErrorHandler(ErrGetAccessToken, responseJson.Errmsg, responseJson.Errcode)
 }
 
 // NewTemMessage 实例化模版消息
@@ -262,6 +272,9 @@ func (s *SDK) NewTemMessage(touser, templateID, url, appID, appPagePath, clientM
 // SendTempMessage 发送模版消息
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Message_Management/Template_Message_Interface.html
 func (s *SDK) SendTempMessage(message *TempMessage) error {
+	if err := s.checkAccessToken(); err != nil {
+		return err
+	}
 	// 将消息数据序列化为JSON
 	jsonData, err := json.Marshal(message)
 	if err != nil {
@@ -302,12 +315,15 @@ func (s *SDK) SendTempMessage(message *TempMessage) error {
 		return nil
 	}
 
-	return ErrorHandler(ErrSendTempMessage, responseJson.ErrMsg, responseJson.Errcode)
+	return ErrorHandler(ErrSendTempMessage, responseJson.Errmsg, responseJson.Errcode)
 }
 
 // GetUserList 获取用户列表
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/User_Management/Getting_a_User_List.html
 func (s *SDK) GetUserList(nextOpenID string) (*GetUserListResponse, error) {
+	if err := s.checkAccessToken(); err != nil {
+		return nil, err
+	}
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/user/get?access_token=%s&next_openid=%s",
 		s.AccessToken, nextOpenID)
@@ -332,7 +348,7 @@ func (s *SDK) GetUserList(nextOpenID string) (*GetUserListResponse, error) {
 		return nil, err
 	}
 	if responseJson.Errcode != 0 {
-		return nil, ErrorHandler(ErrGetUserList, responseJson.ErrMsg, responseJson.Errcode)
+		return nil, ErrorHandler(ErrGetUserList, responseJson.Errmsg, responseJson.Errcode)
 	}
 	return &responseJson, nil
 }
@@ -340,6 +356,9 @@ func (s *SDK) GetUserList(nextOpenID string) (*GetUserListResponse, error) {
 // GetUserInfo 获取用户基本信息
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/User_Management/Get_users_basic_information_UnionID.html#UinonId
 func (s *SDK) GetUserInfo(openID string) (*GetUserInfoResponse, error) {
+	if err := s.checkAccessToken(); err != nil {
+		return nil, err
+	}
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/user/info?access_token=%s&openid=%s&lang=zh_CN",
 		s.AccessToken, openID)
@@ -364,7 +383,7 @@ func (s *SDK) GetUserInfo(openID string) (*GetUserInfoResponse, error) {
 		return nil, err
 	}
 	if responseJson.Errcode != 0 {
-		return nil, ErrorHandler(ErrGetUserInfo, responseJson.ErrMsg, responseJson.Errcode)
+		return nil, ErrorHandler(ErrGetUserInfo, responseJson.Errmsg, responseJson.Errcode)
 	}
 	return &responseJson, nil
 }
@@ -397,7 +416,7 @@ func (s *SDK) GetWebAuthAccessToken(code string) (*GetWebAuthAccessTokenResponse
 		return nil, err
 	}
 	if responseJson.Errcode != 0 {
-		return nil, ErrorHandler(ErrGetWebAuthAccessToken, responseJson.ErrMsg, responseJson.Errcode)
+		return nil, ErrorHandler(ErrGetWebAuthAccessToken, responseJson.Errmsg, responseJson.Errcode)
 	}
 	return &responseJson, nil
 }
@@ -405,6 +424,9 @@ func (s *SDK) GetWebAuthAccessToken(code string) (*GetWebAuthAccessTokenResponse
 // DownloadAmrVoiceByMediaID 通过获取临时素材接口下载amr格式音频到指定路径
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
 func (s *SDK) DownloadAmrVoiceByMediaID(mediaID, path string) error {
+	if err := s.checkAccessToken(); err != nil {
+		return err
+	}
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
 		s.AccessToken, mediaID)
@@ -433,6 +455,9 @@ func (s *SDK) DownloadAmrVoiceByMediaID(mediaID, path string) error {
 // DownloadAmrVoiceByMediaIDAndReturnBase64 通过获取临时素材接口下载amr格式音频，并返回Base64编码字符串
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_temporary_materials.html
 func (s *SDK) DownloadAmrVoiceByMediaIDAndReturnBase64(mediaID string) (string, error) {
+	if err := s.checkAccessToken(); err != nil {
+		return "", err
+	}
 	// 接口地址
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s",
 		s.AccessToken, mediaID)
@@ -454,7 +479,9 @@ func (s *SDK) DownloadAmrVoiceByMediaIDAndReturnBase64(mediaID string) (string, 
 // AddMaterial 新增永久素材
 // 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Adding_Permanent_Assets.html
 func (s *SDK) AddMaterial(mediaType, fileUrl string) (string, error) {
-
+	if err := s.checkAccessToken(); err != nil {
+		return "", err
+	}
 	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=%s&type=%s",
 		s.AccessToken, mediaType)
 
@@ -521,8 +548,57 @@ func (s *SDK) AddMaterial(mediaType, fileUrl string) (string, error) {
 	}
 
 	if response.Errcode != 0 {
-		return "", fmt.Errorf(response.ErrMsg)
+		return "", fmt.Errorf(response.Errmsg)
 	}
 
 	return response.MediaId, nil
+}
+
+// CreateMenu 创建自定义菜单
+// 官方文档地址 https://developers.weixin.qq.com/doc/offiaccount/Custom_Menus/Creating_Custom-Defined_Menu.html
+func (s *SDK) CreateMenu(menu Menu) error {
+	if err := s.checkAccessToken(); err != nil {
+		return err
+	}
+	// 将消息数据序列化为JSON
+	jsonData, err := json.Marshal(menu)
+	if err != nil {
+		return err
+	}
+
+	// 创建请求
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/menu/create?access_token=%s", s.AccessToken)
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	// 设置请求头
+	request.Header.Set("Content-Type", "application/json")
+
+	// 创建一个 HTTP 客户端并发送请求
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// 解析响应
+	var responseJson Error
+	if err = json.Unmarshal(body, &responseJson); err != nil {
+		return err
+	}
+
+	if responseJson.Errcode == 0 {
+		return nil
+	}
+
+	return ErrorHandler(ErrCreateMenu, responseJson.Errmsg, responseJson.Errcode)
 }

@@ -4,6 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
 )
 
 // ErrorHandler 错误处理
@@ -15,6 +17,7 @@ var (
 	ErrGetAccessToken         = "access_token获取失败"
 	ErrSendTempMessage        = "模版消息发送失败"
 	ErrSendTextMessage        = "文本消息发送失败"
+	ErrCreateMenu             = "自定义菜单创建失败"
 	ErrSendMiniprogramMessage = "小程序卡片消息发送失败"
 	ErrGetUserList            = "用户列表获取失败"
 	ErrGetUserInfo            = "用户基础信息获取失败"
@@ -38,9 +41,11 @@ type MessageHandler func(msg *Message, w http.ResponseWriter)
 
 type SDK struct {
 	handlers    map[MessageType]MessageHandler
-	AppID       string // appid
-	AppSecret   string // appsecret
-	AccessToken string // accesstoken
+	AppID       string
+	AppSecret   string
+	AccessToken string
+	tokenExpiry time.Time  // 过期时间
+	tokenMutex  sync.Mutex // 互斥锁，确保线程安全
 }
 
 // XMLMessage 微信xml消息格式
@@ -70,19 +75,22 @@ type Message struct {
 	Event        string      // 事件类型
 }
 
+type Error struct {
+	Errcode int    `json:"errcode"`
+	Errmsg  string `json:"errmsg"`
+}
+
 // AccessTokenResponse access_token响应
 type AccessTokenResponse struct {
 	AccessToken string `json:"access_token"` // 获取到的凭证
 	ExpiresIn   int    `json:"expires_in"`   // 凭证有效时间，单位：秒
-	Errcode     int    `json:"errcode"`      // 错误码
-	ErrMsg      string `json:"errmsg"`       // 错误信息
+	Error
 }
 
 // SendTempMessageResponse 发送模版消息响应
 type SendTempMessageResponse struct {
-	Errcode int    `json:"errcode"` // 错误码
-	ErrMsg  string `json:"errmsg"`  // 错误信息
-	MsgID   int    `json:"msgid"`   // 消息ID
+	Error
+	MsgID int `json:"msgid"` // 消息ID
 }
 
 // TempMessage 模版消息通用格式
@@ -110,8 +118,7 @@ type GetUserListResponse struct {
 		OpenID []string `json:"openid"`
 	} `json:"data"` // 列表数据，OPENID的列表
 	NextOpenID string `json:"next_openid"` // 拉取列表的最后一个用户的OPENID
-	Errcode    int    `json:"errcode"`     // 错误码
-	ErrMsg     string `json:"errmsg"`      // 错误信息
+	Error
 }
 
 // GetUserInfoResponse 获取用户基本信息响应
@@ -127,8 +134,7 @@ type GetUserInfoResponse struct {
 	SubScribeScene string `json:"subscribe_scene"` // 返回用户关注的渠道来源，ADD_SCENE_SEARCH 公众号搜索，ADD_SCENE_ACCOUNT_MIGRATION 公众号迁移，ADD_SCENE_PROFILE_CARD 名片分享，ADD_SCENE_QR_CODE 扫描二维码，ADD_SCENE_PROFILE_LINK 图文页内名称点击，ADD_SCENE_PROFILE_ITEM 图文页右上角菜单，ADD_SCENE_PAID 支付后关注，ADD_SCENE_WECHAT_ADVERTISEMENT 微信广告，ADD_SCENE_REPRINT 他人转载 ,ADD_SCENE_LIVESTREAM 视频号直播，ADD_SCENE_CHANNELS 视频号 , ADD_SCENE_OTHERS 其他
 	QRScene        int    `json:"qr_scene"`        // 二维码扫码场景（开发者自定义）
 	QRSceneStr     string `json:"qr_scene_str"`    // 二维码扫码场景描述（开发者自定义）
-	Errcode        int    `json:"errcode"`         // 错误码
-	ErrMsg         string `json:"errmsg"`          // 错误信息
+	Error
 }
 
 // GetWebAuthAccessTokenResponse 通过code换取网页授权access_token的响应
@@ -140,13 +146,25 @@ type GetWebAuthAccessTokenResponse struct {
 	Scope          string `json:"scope"`           // 用户授权的作用域，使用逗号（,）分隔
 	IsSnapShotUser int    `json:"is_snapshotuser"` // 是否为快照页模式虚拟账号，只有当用户是快照页模式虚拟账号时返回，值为1
 	UnionID        string `json:"unionid"`         // 用户统一标识（针对一个微信开放平台账号下的应用，同一用户的 unionid 是唯一的），只有当scope为"snsapi_userinfo"时返回
-	Errcode        int    `json:"errcode"`         // 错误码
-	ErrMsg         string `json:"errmsg"`          // 错误信息
+	Error
 }
 
 // AddMediaResponse 新增永久素材响应
 type AddMediaResponse struct {
-	Errcode int    `json:"errcode"`  // 错误码
-	ErrMsg  string `json:"errmsg"`   // 错误信息
+	Error
 	MediaId string `json:"media_id"` // 媒体文件上传后，获取标识
+}
+
+type Menu struct {
+	Button []MenuButton `json:"button"`
+}
+
+type MenuButton struct {
+	Type      string       `json:"type,omitempty"`
+	Name      string       `json:"name,omitempty"`
+	Key       string       `json:"key,omitempty"`
+	Url       string       `json:"url,omitempty"`
+	AppID     string       `json:"appid,omitempty"`
+	PagePath  string       `json:"pagepath,omitempty"`
+	SubButton []MenuButton `json:"sub_button,omitempty"`
 }

@@ -3,14 +3,13 @@ package main
 import (
 	"fmt"
 	"github.com/supercat0867/wechat"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 )
 
-// 被动回复消息示例，实际使用中要在公众号后台配置号服务器地址等信息
 func main() {
-	sdk := wechat.NewMessageSDK("", "")
+	sdk := wechat.New("", "")
 
 	// 注册文本消息处理函数
 	sdk.RegisterHandler(wechat.TextMessage, func(msg *wechat.Message, w http.ResponseWriter) {
@@ -26,7 +25,7 @@ func main() {
 
 	http.HandleFunc("/msgHandler", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				// 发生错误时的处理
 				http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -37,7 +36,6 @@ func main() {
 		}
 	})
 
-	fmt.Println("启动服务器，监听/msgHandler路径")
 	if err := http.ListenAndServe(":80", nil); err != nil {
 		fmt.Println("Server error:", err)
 	}

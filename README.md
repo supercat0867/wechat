@@ -8,6 +8,7 @@
 
 | 模块          | 功能                 | 方法                                                                                                                                   |
 |-------------|--------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| 自定义菜单       | 创建自定义菜单            | func (s *SDK) CreateMenu(menu Menu) error                                                                                            |
 | 用户管理        | 获取用户列表             | func (s *SDK) GetUserList(nextOpenID string) (*GetUserListResponse, error)                                                           |
 |             | 获取用户基础信息           | func (s *SDK) GetUserInfo(openID string) (*GetUserInfoResponse, error)                                                               |
 | AccessToken | 获取公众号access_token  | func (s *SDK) GetAccessToken() (*AccessTokenResponse, error)                                                                         |
